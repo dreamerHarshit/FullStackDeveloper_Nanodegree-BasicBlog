@@ -44,7 +44,7 @@ class Post(db.Model):
 
 	def render(self):
 		self._render_text = self.content.replace('\n', '<br>')
-		return render_str("post.html",p=self)
+		return render_str("post.html",p = self)
 
 class BlogFront(BlogHandler):
 	def get(self):
@@ -53,7 +53,7 @@ class BlogFront(BlogHandler):
 
 class PostPage(BlogHandler):
 	def get(self, post_id):
-		key = db.key.from_path('Post',int(post_id),parent=blog_key())
+		key = db.Key.from_path('Post',int(post_id),parent=blog_key())
 		post = db.get(key)
 		
 		if not post:
