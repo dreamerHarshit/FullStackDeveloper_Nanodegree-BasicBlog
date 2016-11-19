@@ -7,6 +7,17 @@ body {
     padding: 10px;
     color: #333;
 }
+.user-area{
+    font-size: 13px;
+    color: gray;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+.login {
+    color: gray;
+    text-decoration: none;
+}
 
 h2 {
     font-size: 24px;
