@@ -1,11 +1,11 @@
 import os
 import re
-from string import letters
+import string
 import webapp2
 import jinja2
 import hashlib
 import hmac
-
+import random
 from google.appengine.ext import db
 
 template_dir=os.path.join(os.path.dirname(__file__),'templates')
@@ -44,11 +44,11 @@ def check_secure_val(h):
 
 def make_salt():
 	''' generating salt for hasing'''
-	return ''.join(random.choice(string.letters) for x in range(5))		
+	return ''.join(random.choice(string.letters) for x in xrange(5))		
 
 def make_pw_hash(name,pw,salt=None):
 	'''Encrypt password with HASH'''
-	if not saltt:
+	if not salt:
 		salt=make_salt()
 	h=hashlib.sha256(name+pw+salt).hexdigest()
 	return '%s,%s' % (h,salt)
