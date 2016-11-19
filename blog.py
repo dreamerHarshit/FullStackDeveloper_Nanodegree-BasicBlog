@@ -201,18 +201,17 @@ class Signup(BlogHandler):
 	def post(self):
 		have_error = False
 		username = self.request.get('username')
-        password = self.request.get('password')
-        verify = self.request.get('verify')
-        email = self.request.get('email')
-        params = dict(username = username,
+		password = self.request.get('password')
+		verify = self.request.get('verify')
+		email = self.request.get('email')
+		params = dict(username = username,
                       email = email)
-        user=User.gql("WHERE username='%s'"%username).get()
-        
-        if user:
-			exist_error=True
-			self.render("signup.html",exist_error=exist_error,username=username)
+		user=User.gql("WHERE username='%s'"%username).get()
+		if user:
+			have_error=True
+			self.render("signup.html",have_error=have_error,username=username)
 
-        else:
+		else:
 			if not valid_username(username):
 				params['error_username'] = "That's not a valid username."
 				have_error = True
@@ -229,6 +228,7 @@ class Signup(BlogHandler):
 		
 		if have_error:
 			self.render("signup.html",have_error=have_error,username=username)
+
 		else:
 			user=User(username=username,pwd_hash=make_pw_hash(username,password))
 			user.put()
@@ -246,7 +246,7 @@ class Login(BlogHandler):
 		password=self.request.get("password")
 		user=User.gql("WHERE username = '%s'" % username).get()
 		if user and valid_pw(username, password, user.pwd_hash):
-			//print "hello\n"
+			#//print "hello\n"
 			user_cookie = make_secure_val(str(username))
 			self.response.headers.add_header("Set-Cookie",
                                              "user=%s; Path=/" % user_cookie)
