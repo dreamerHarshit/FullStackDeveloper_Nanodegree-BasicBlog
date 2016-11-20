@@ -121,7 +121,7 @@ class Post(db.Model):
 class Comment(db.Model):
 	post_id = db.IntegerProperty(required=True)
 	author = db.ReferenceProperty(User)
-	content = db.StringProperty(required=True)
+	content = db.TextProperty(required=True)
 	created = db.DateTimeProperty(auto_now_add=True)
 
 class Signup(BlogHandler):
@@ -296,7 +296,7 @@ class Comment(BlogHandler):
 		if not self.user:
 			return self.redirect("/login")
 		content=self.request.get("content")
-		
+		post_id=self.request.get("post")
 		if content:
 			p=Post(parent=blog_key(),content = content,author=self.user)
 			p.put()
