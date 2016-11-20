@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
-	{{post.render() | safe}}
+	<div>
+	<h2>{{post.subject}}</h2>
+	<p>Posted By {{post.author.username}}</p>
+	<p>{{post.content | safe}}</p>
+	<br>
+	<a href="/blog/{{post.key().id()}}">comment</a>
+
+	{% if post.author.username == user.username%}
+		<a href="/blog/edit?post={{post.key().id()}}">Edit</a>
+		<a href="/blog/delete?post={{post.key().id()}}">Delete</a>
+	{% endif %}	
+	</div>
 {% endblock %}	

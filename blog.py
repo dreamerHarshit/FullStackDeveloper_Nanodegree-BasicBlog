@@ -58,25 +58,41 @@ def valid_pw(name, pw, h):
     salt = h.split(',')[1]
     return h == make_pw_hash(name, pw, salt)
 
-def render_str(template, **params):
-    t = jinja_env.get_template(template)
-    return t.render(params)
 
 
 class BlogHandler(webapp2.RequestHandler):
-	def write(self, *a, **kw):
-		self.response.out.write(*a, **kw)
+    """Define functions for rendering Web Pages"""
+    def write(self, *a, **kw):
+        """Write to Web Page"""
+        self.response.write(*a, **kw)
 
-	def render_str(self, template, **params):
-		return render_str(template, **params)
-	
-	def render(self, template, **kw):
-		self.write(self.render_str(template, **kw))
+    def render_str(self, template, **kw):
+        """Render Jinja template"""
+        kw['user'] = self.user
+        t = jinja_env.get_template(template)
+        return t.render(kw)
 
-	def set_secure_cookie(self,name,val):
-		"""set cookies"""
-		cookie_val = make_secure_val(val)	
+    def render(self, template, **kw):
+        """Write template to Web Page"""
+        self.write(self.render_str(template, **kw))
 
+    def set_secure_cookie(self, name, val):
+        """Set Cookie"""
+        cookie_val = make_secure_val(val)
+        self.response.headers.add_header(
+            'Set-Cookie',
+            '%s=%s; Path=/' % (name, cookie_val))
+
+    def read_secure_cookie(self, name):
+        """Return Cookie Value"""
+        cookie_val = self.request.cookies.get(name)
+        return cookie_val and check_secure_val(cookie_val)
+
+    def initialize(self, *a, **kw):
+        """Initialise Web Page with signed-in user"""
+        webapp2.RequestHandler.initialize(self, *a, **kw)
+        username = self.read_secure_cookie('user')
+        self.user = User.gql("WHERE username = '%s'" % username).get()
 def render_post(response, post):
     response.out.write('<b>' + post.subject + '</b><br>')
     response.out.write(post.content)
@@ -85,114 +101,28 @@ def render_post(response, post):
 def blog_key(name = 'default'):
     return db.Key.from_path('blogs', name)
 
+class User(db.Model):
+	username=db.StringProperty(required=True)
+	pwd_hash=db.StringProperty(required=True)
+
 
 class Post(db.Model):
 	subject=db.StringProperty(required=True)
 	content=db.TextProperty(required=True)
 	created=db.DateTimeProperty(auto_now_add=True)
 	last_modified=db.DateTimeProperty(auto_now = True)
+	author = db.ReferenceProperty(User)
 
+	
 	def render(self):
 		self._render_text = self.content.replace('\n', '<br>')
 		return render_str("post.html",p = self)
 
-class User(db.Model):
-	username=db.StringProperty(required=True)
-	pwd_hash=db.StringProperty(required=True)
-
-class BlogFront(BlogHandler):
-	def get(self):
-		posts=db.GqlQuery("select * from Post order by created desc limit 10")
-		self.render('front.html',posts=posts)
-
-class PostPage(BlogHandler):
-	def get(self, post_id):
-		key = db.Key.from_path('Post',int(post_id),parent=blog_key())
-		post = db.get(key)
-		
-		if not post:
-			self.error(404)
-			return
-		
-		self.render("permalink.html",post = post)
-	
-class NewPost(BlogHandler):
-	def get(self):
-		if self.user:
-			self.render("newpost.html")
-		else:
-			self.redirect("/login")
-
-	def post(self):
-		if not self.user:
-			return self.redirect("/login")
-		subject=self.request.get("subject")
-		content=self.request.get("content")
-		
-		if subject and content:
-			p=Post(parent=blog_key(),subject = subject,content = content)
-			p.put()
-			self.redirect("/blog")
-		else:
-			error="subject and content please!"	
-			self.render("newpost.html",subject=subject,content=content,error=error)
-
-class EditPost(BlogHandler):
-	"""Handler for EditPost"""
-	def get(self):
-		if self.user:
-			post_id=self.request.get("post")
-			key=db.Key('BlogPost',int(post_id),parent=blog_key())
-			post=key.get()
-			if not post:
-				self.error(404)
-				return
-			self.render("editpost.html",subject=post.subject,content=post.content)
-		else:
-			self.redirect("/login")		
-
-	def post(self):
-		post_id=self.request.get("subject")
-		key= db.Key('BlogPost',int(post_id), parent=blog_key())
-		post=key.get()
-		if post and post.author.username==self.user.username:
-			if not self.user:
-				return self.redirect("/login")
-			subject=self.request.get("subject")
-			content=self.request.get("content")
-			if subject and content:
-				post.subject=subject
-				post.content=content
-				post.put()
-				self.redirect("/blog")
-			else:
-				error = "missing subject or content"
-				self.render("editpost.html",subject=subject,content=content,error=error)
-		else:
-			self.redirect("/blog")
-class DeletePost(BlogHandler):
-	"""Handler for deleting a post"""
-	def get(self):
-		if self.user:
-			post_id=self.request.get("post")
-			key=db.Key('BlogPost',int(post_id),parent=blog_key())
-			post=Key.get()
-			if not post:
-				self.error(404)
-				return
-			self.render("deletepost.html",post=post)
-		else:
-			self.redirect("/login")
-
-	def post(self):
-		if not self.user:
-			return self.redirect("/login")
-		post_id=self.request.get("post")
-		key=db.Key('BlogPost',int(post_id),parent=blog_key())
-		post=key.get()
-		if post and poat.author.username==self.user.username:
-			key.delet()
-		self.redirect("/blog")
+class Comment(db.Model):
+	post_id = db.IntegerProperty(required=True)
+	author = db.ReferenceProperty(User)
+	content = db.StringProperty(required=True)
+	created = db.DateTimeProperty(auto_now_add=True)
 
 class Signup(BlogHandler):
 	def get(self):
@@ -260,6 +190,166 @@ class Logout(BlogHandler):
 		self.response.headers.add_header("Set-Cookie", "user=; Path=/")
 		self.redirect("/blog")
 
+class BlogFront(BlogHandler):
+	def get(self):
+		posts=db.GqlQuery("select * from Post order by created desc limit 10")
+		print posts
+		self.render('front.html',posts=posts)
+
+class PostPage(BlogHandler):
+	def get(self, post_id):
+		key = db.Key.from_path('Post',int(post_id),parent=blog_key())
+		post = db.get(key)
+		
+		if not post:
+			self.error(404)
+			return
+		
+		self.render("permalink.html",post = post)
+
+class NewPost(BlogHandler):
+	def get(self):
+		if self.user:
+			self.render("newpost.html")
+		else:
+			self.redirect("/login")
+
+	def post(self):
+		if not self.user:
+			return self.redirect("/login")
+		subject=self.request.get("subject")
+		content=self.request.get("content")
+		
+		if subject and content:
+			p=Post(parent=blog_key(),subject = subject,content = content,author=self.user)
+			p.put()
+			self.redirect("/blog")
+		else:
+			error="subject and content please!"	
+			self.render("newpost.html",subject=subject,content=content,error=error)
+
+class EditPost(BlogHandler):
+	"""Handler for EditPost"""
+	def get(self):
+		if self.user:
+			post_id=self.request.get("post")
+			key = db.Key.from_path('Post',int(post_id),parent=blog_key())
+			post=db.get(key)
+			if not post:
+				self.error(404)
+				return
+			self.render("editpost.html",subject=post.subject,content=post.content)
+		else:
+			self.redirect("/login")		
+
+	def post(self):
+		post_id=self.request.get("subject")
+		key = db.Key.from_path('Post',int(post_id),parent=blog_key())
+		post=db.get(key)
+		if post and post.author.username==self.user.username:
+			if not self.user:
+				return self.redirect("/login")
+			subject=self.request.get("subject")
+			content=self.request.get("content")
+			if subject and content:
+				post.subject=subject
+				post.content=content
+				post.put()
+				self.redirect("/blog")
+			else:
+				error = "missing subject or content"
+				self.render("editpost.html",subject=subject,content=content,error=error)
+		else:
+			self.redirect("/blog")
+
+class DeletePost(BlogHandler):
+	"""Handler for deleting a post"""
+	def get(self):
+		if self.user:
+			post_id=self.request.get("post")
+			key = db.Key.from_path('Post',int(post_id),parent=blog_key())
+			post=Key.get()
+			if not post:
+				self.error(404)
+				return
+			self.render("deletepost.html",post=post)
+		else:
+			self.redirect("/login")
+
+	def post(self):
+		if not self.user:
+			return self.redirect("/login")
+		
+		post_id=self.request.get("post")
+		key = db.Key.from_path('Post',int(post_id),parent=blog_key())
+		post=key.get()
+		if post and post.author.username==self.user.username:
+			key.delet()
+		self.redirect("/blog")
+
+
+class EditComment(BlogHandler):
+    """Handler for EditComment"""
+    def get(self):
+        if self.user:
+            comment_id = self.request.get("comment")
+            key = db.Key.from_path('Comment',int(comment_id),parent=blog_key())
+
+            comment = db.get(key)
+            if not comment:
+                self.error(404)
+                return
+            self.render("editcomment.html",
+                        content=comment.content, post_id=comment.post_id)
+        else:
+            self.redirect("/login")
+
+    def post(self):
+        if not self.user:
+            return self.redirect("/login")
+        comment_id = self.request.get("comment")
+        key = db.Key.from_path('Comment',int(comment_id),parent=blog_key())
+        comment = db.get(key)
+        if comment and comment.author.username == self.user.username:
+            content = self.request.get("content")
+            if content:
+                comment.content = content
+                comment.put()
+                self.redirect("/blog/%s" % comment.post_id)
+            else:
+                error = "Missing subject or content"
+                self.render("editcomment.html",
+                            content=content,
+                            post_id=comment.post_id,
+                            error=error)
+        else:
+            self.redirect("/blog/%s" % comment.post_id)
+
+
+class DeleteComment(BlogHandler):
+    """Handler for DeleteComment"""
+    def get(self):
+        if self.user:
+            comment_id = self.request.get("comment")
+            key = db.Key.from_path('Comment',int(comment_id),parent=blog_key())
+            comment = db.get(key)
+            if not comment:
+                self.error(404)
+                return
+            self.render("deletecomment.html", comment=comment)
+        else:
+            self.redirect("/login")
+
+    def post(self):
+        if not self.user:
+            return self.redirect("/login")
+        comment_id = self.request.get("comment")
+        key = db.Key.from_path('Comment',int(comment_id),parent=blog_key())
+        comment = db.get(key)
+        if comment and comment.author.username == self.user.username:
+            post_id = comment.post_id
+            key.delete()
+        self.redirect("/blog/%s" % post_id)
 app = webapp2.WSGIApplication([('/',BlogFront),
                                ('/signup', Signup),
                                ('/login',Login),
@@ -269,5 +359,7 @@ app = webapp2.WSGIApplication([('/',BlogFront),
                                ('/blog/edit',EditPost),
                                ('/blog/delete',DeletePost),
                                ('/blog/newpost', NewPost),
+                               ('/comment/edit', EditComment),
+                               ('/comment/delete', DeleteComment),
                                ],
                               debug=True)

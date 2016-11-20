@@ -3,7 +3,23 @@
 {% block content %}
 	
 	{% for p in posts %}
-		{{p.render()|safe}}
+	<div>
+	<h2>{{p.subject}} </h2>
+	<p>Posted By: {{p.author.username}}</p>
+	<p>Posted on: {{p.created.strftime("%b, %d, %Y")}}</p>
+
+	<p>{{p.content | safe}}</p>
+	<a href="/blog/{{p.key().id()}}">Comment</a>
+	|
+	{% if p.author.username == user.username%}
+
+		<a href="/blog/edit?post={{p.key().id()}}">Edit</a>
+		|
+
+		<a href="/blog/delete?post={{p.key().id()}}">Delete</a>
+	{% endif %}	
+	</div>	
+	<hr>
 		<br><br>
 	{% endfor %}
 {% endblock %}	
