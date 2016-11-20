@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Edit Comment</h2>
+  <form method="post" action="blog.py">
+    <textarea name="content">{{ content | safe }}</textarea>
+    <div class="error">{{ error }}</div>
+    <input type="submit">
+  </form>
+  <a href="/blog/post={{post.key.id()}}">Back</a>
+{% endblock %}

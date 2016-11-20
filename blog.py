@@ -204,7 +204,6 @@ class PostPage(BlogHandler):
 		if not post:
 			self.error(404)
 			return
-		
 		self.render("permalink.html",post = post)
 
 class NewPost(BlogHandler):
@@ -287,7 +286,25 @@ class DeletePost(BlogHandler):
 			key.delet()
 		self.redirect("/blog")
 
-
+class Comment(BlogHandler):
+	def get(self):
+		if self.user:
+			self.render("comment.html")
+		else:
+			self.redirect("/login")
+	def post(self):
+		if not self.user:
+			return self.redirect("/login")
+		content=self.request.get("content")
+		
+		if content:
+			p=Post(parent=blog_key(),content = content,author=self.user)
+			p.put()
+			self.redirect("/blog/%s"%post_id)
+		else:
+			error="content please!"	
+			self.render("comment.html",content=content,error=error)
+		
 class EditComment(BlogHandler):
     """Handler for EditComment"""
     def get(self):
@@ -361,5 +378,6 @@ app = webapp2.WSGIApplication([('/',BlogFront),
                                ('/blog/newpost', NewPost),
                                ('/comment/edit', EditComment),
                                ('/comment/delete', DeleteComment),
+                               ('/comment/new',Comment)
                                ],
                               debug=True)
