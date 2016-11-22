@@ -7,7 +7,7 @@ import hashlib
 import hmac
 import random
 from google.appengine.ext import db
-
+from models import *
 template_dir=os.path.join(os.path.dirname(__file__),'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
                                autoescape = True)
@@ -59,6 +59,7 @@ def valid_pw(name, pw, h):
     return h == make_pw_hash(name, pw, salt)
 
 
+#All Handlers
 
 class BlogHandler(webapp2.RequestHandler):
     """Define functions for rendering Web Pages"""
@@ -93,6 +94,7 @@ class BlogHandler(webapp2.RequestHandler):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         username = self.read_secure_cookie('user')
         self.user = User.gql("WHERE username = '%s'" % username).get()
+
 def render_post(response, post):
     response.out.write('<b>' + post.subject + '</b><br>')
     response.out.write(post.content)
@@ -101,28 +103,6 @@ def render_post(response, post):
 def blog_key(name = 'default'):
     return db.Key.from_path('blogs', name)
 
-class User(db.Model):
-	username=db.StringProperty(required=True)
-	pwd_hash=db.StringProperty(required=True)
-
-
-class Post(db.Model):
-	subject=db.StringProperty(required=True)
-	content=db.TextProperty(required=True)
-	created=db.DateTimeProperty(auto_now_add=True)
-	last_modified=db.DateTimeProperty(auto_now = True)
-	author = db.ReferenceProperty(User)
-
-	
-	def render(self):
-		self._render_text = self.content.replace('\n', '<br>')
-		return render_str("post.html",p = self)
-
-class Comment(db.Model):
-	post_id = db.IntegerProperty(required=True)
-	author = db.ReferenceProperty(User)
-	content = db.TextProperty(required=True)
-	created = db.DateTimeProperty(auto_now_add=True)
 
 class Signup(BlogHandler):
 	def get(self):
@@ -267,7 +247,7 @@ class DeletePost(BlogHandler):
 		if self.user:
 			post_id=self.request.get("post")
 			key = db.Key.from_path('Post',int(post_id),parent=blog_key())
-			post=Key.get()
+			post=db.get(key)
 			if not post:
 				self.error(404)
 				return
@@ -281,7 +261,7 @@ class DeletePost(BlogHandler):
 		
 		post_id=self.request.get("post")
 		key = db.Key.from_path('Post',int(post_id),parent=blog_key())
-		post=key.get()
+		post=db.get(key)
 		if post and post.author.username==self.user.username:
 			key.delet()
 		self.redirect("/blog")
@@ -295,15 +275,14 @@ class Comment(BlogHandler):
 	def post(self):
 		if not self.user:
 			return self.redirect("/login")
-		content=self.request.get("content")
-		post_id=self.request.get("post")
-		if content:
-			p=Post(parent=blog_key(),content = content,author=self.user)
+		comment=self.request.get("comment")
+		if comment:
+			p=Comment(comment = comment,author=this.user)
 			p.put()
-			self.redirect("/blog/%s"%post_id)
+			self.redirect("/blog")
 		else:
 			error="content please!"	
-			self.render("comment.html",content=content,error=error)
+			self.render("comment.html",comment=comment,error=error)
 		
 class EditComment(BlogHandler):
     """Handler for EditComment"""
@@ -367,6 +346,9 @@ class DeleteComment(BlogHandler):
             post_id = comment.post_id
             key.delete()
         self.redirect("/blog/%s" % post_id)
+
+
+
 app = webapp2.WSGIApplication([('/',BlogFront),
                                ('/signup', Signup),
                                ('/login',Login),
