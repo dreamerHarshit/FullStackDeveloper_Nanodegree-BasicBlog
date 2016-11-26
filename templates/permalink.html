@@ -6,12 +6,13 @@
 	<p>Posted By {{post.author.username}}</p>
 	<p>{{post.content | safe}}</p>
 	<br>
-	<a href="/comment/new">comment</a>
-	|
+	{{comment |safe}}
+	<br>
+	<a href="/comment/new?post={{post.key.id()}}">comment</a>
 	{% if post.author.username == user.username%}
-		<a href="/blog/edit?post={{post.key().id()}}">Edit</a>
+		<a href="/blog/edit?post={{post.key.id()}}">Edit</a>
 		|
-		<a href="/blog/delete?post={{post.key().id()}}">Delete</a>
+		<a href="/blog/delete?post={{post.key.id()}}">Delete</a>
 	{% endif %}	
 	</div>
 {% endblock %}	

@@ -9,14 +9,15 @@
 	<p>Posted on: {{p.created.strftime("%b, %d, %Y")}}</p>
 
 	<p>{{p.content | safe}}</p>
-	<a href="/blog/{{p.key().id()}}">Comment</a>
+	<p>{{p.comment}}</p>
+	<a href="/comment/new/{{p.key.id()}}">Comment</a>
 	|
 	{% if p.author.username == user.username%}
 
-		<a href="/blog/edit?post={{p.key().id()}}">Edit</a>
+		<a href="/blog/edit?post={{p.key.id()}}">Edit</a>
 		|
 
-		<a href="/blog/delete?post={{p.key().id()}}">Delete</a>
+		<a href="/blog/delete?post={{p.key.id()}}">Delete</a>
 	{% endif %}	
 	</div>	
 	<hr>
